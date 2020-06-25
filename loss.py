@@ -34,8 +34,6 @@ def VAELoss(model, x, y, ae_type):
     else:
         raise ValueError
 
-    #x_logits = model.decode(z)
-
     # cross_ent = - marginal likelihood
     cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logits, labels=x)
     marginal_likelihood = - tf.reduce_sum(cross_ent, axis=[1, 2, 3])
