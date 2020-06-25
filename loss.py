@@ -1,25 +1,40 @@
 import tensorflow as tf
-from utils import reparameterize
 
-def compute_loss(model, x, ae_type):
+def compute_loss(model, x, y, ae_type):
+
     if ae_type == "AE":
-        return binaryCrossEntropy(model, x)
+        return binaryCrossEntropy(model, x, y)
     elif ae_type == "VAE" or ae_type == "CVAE":
-        return VAELoss(model, x)
+        return VAELoss(model, x, y, ae_type)
     else:
         raise ValueError
 
-def binaryCrossEntropy(model, x):
+def binaryCrossEntropy(model, x, y):
     loss_object = tf.keras.losses.BinaryCrossentropy()
     z = model.encode(x)
     x_logits = model.decode(z)
     loss = loss_object(x, x_logits)
     return loss
 
-def VAELoss(model, x):
-    mean, logvar = model.encode(x)
-    z = reparameterize.trick(mean, logvar)
-    x_logits = model.decode(z)
+def VAELoss(model, x, y, ae_type):
+
+    if ae_type == "VAE":
+        mean, logvar = model.encode(x)
+    elif ae_type == "CVAE":
+        mean, logvar = model.encode(x, y)
+    else:
+        raise ValueError
+
+    z = trick(mean, logvar)
+
+    if ae_type == "VAE":
+        x_logits  = model.decode(z)
+    elif ae_type == "CVAE":
+        x_logits  = model.decode(z, y)
+    else:
+        raise ValueError
+
+    #x_logits = model.decode(z)
 
     # cross_ent = - marginal likelihood
     cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logits, labels=x)
@@ -32,3 +47,8 @@ def VAELoss(model, x):
     ELBO = marginal_likelihood - KL_divergence
     loss = -ELBO
     return loss
+
+# Reparametrization trick
+def trick(mean, logvar):
+    eps = tf.random.normal(shape=mean.shape)
+    return eps * tf.exp(logvar * .5) + mean

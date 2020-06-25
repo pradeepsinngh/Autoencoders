@@ -3,12 +3,11 @@
 
 import tensorflow as tf
 from utils import data, plot
-from model.autoencoder import AE, VAE, CVAE
-#from train_utils.autoencoder import AETrain, VAETrain, CVAETrain
+from model.auto_encoder import AE
+from model.variational_autoenc import VAE, CVAE
 from loss import compute_loss
 import time
 import argparse
-
 
 def parse_args():
     desc = "Tensorflow 2.0 implementation of 'AutoEncoder Families (AE, VAE, CVAE(Conditional VAE))'"
@@ -26,7 +25,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def train(ae_type, net_type,latent_dim=2, epochs=100, lr=1e-4, batch_size=1000):
+def train(ae_type, net_type, latent_dim=2, epochs=100, lr=1e-4, batch_size=1000):
 
     if ae_type == "AE":
         model = AE(latent_dim, net_type=net_type)
@@ -43,32 +42,22 @@ def train(ae_type, net_type,latent_dim=2, epochs=100, lr=1e-4, batch_size=1000):
     optimizer = tf.keras.optimizers.Adam(lr)
 
     for epoch in range(1, epochs + 1):
-        t = time.time()
         last_loss = 0
-        for train_x, _ in train_dataset:
-            gradients, loss = compute_gradients(model, train_x, ae_type)
+
+        for train_x, train_y in train_dataset:
+            gradients, loss = compute_gradients(model, train_x, train_y, ae_type)
             apply_gradients(optimizer, gradients, model.trainable_variables)
             last_loss = loss
-        if epoch % 10 == 0:
-            print('Epoch {}, Loss: {}, Remaining Time at This Epoch: {:.2f}'.format(
-                epoch, last_loss, time.time() - t
-            ))
 
-    if ae_type == "AE":
-        plot.plot_AE(model, test_dataset)
-    elif ae_type == "VAE":
-        plot.plot_VAE(model, test_dataset)
-    elif ae_type == "CVAE":
-        plot.plot_CVAE(model, test_dataset)
-    else:
-        raise ValueError
+        if epoch % 10 == 0:
+            print('Epoch {}, Loss: {}'.format(epoch, last_loss))
 
     return model
 
 
-def compute_gradients(model, x, ae_type):
+def compute_gradients(model, x, y, ae_type):
     with tf.GradientTape() as tape:
-        loss = compute_loss(model, x, ae_type)
+        loss = compute_loss(model, x, y, ae_type)
     return tape.gradient(loss, model.trainable_variables), loss
 
 def apply_gradients(optimizer, gradients, variables):
@@ -76,12 +65,8 @@ def apply_gradients(optimizer, gradients, variables):
 
 def main(args):
 
-    train(latent_dim=args.latent_dim,
-            epochs=args.num_epochs,
-            lr=args.learn_rate,
-            batch_size=args.batch_size,
-            ae_type = args.ae_type,
-            net_type = "simple",)
+    train(latent_dim=args.latent_dim, epochs=args.num_epochs, lr=args.learn_rate,
+            batch_size=args.batch_size, ae_type = args.ae_type, net_type = "conv",)
 
 if __name__ == "__main__":
     args = parse_args()
