@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 def download_images():
     (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
@@ -13,8 +14,16 @@ def normalize(train_images, test_images):
     test_images /= 255.
     return train_images, test_images
 
-def load_dataset(batch_size=1000):
+def add_gaussian_noise(X, mean=0, std=1):
+    """Returns a copy of X with Gaussian noise."""
+    return X.copy() + std * np.random.standard_normal(X.shape) + mean
+
+def load_dataset(ae_type, batch_size=1000):
     (train_images, train_labels), (test_images, test_labels) = download_images()
+
+    # If using Denoising AE, add noise to train data
+    if ae_type == "DAE":
+        train_images = add_gaussian_noise(train_images)
     train_images, test_images = normalize(train_images, test_images)
 
     TRAIN_BUF = 60000

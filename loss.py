@@ -4,7 +4,7 @@ def compute_loss(model, x, y, ae_type):
 
     if ae_type == "AE":
         return binaryCrossEntropy(model, x, y)
-    elif ae_type == "VAE" or ae_type == "CVAE":
+    elif ae_type == "VAE" or ae_type == "CVAE" or ae_type == "BetaVAE":
         return VAELoss(model, x, y, ae_type)
     else:
         raise ValueError
@@ -22,6 +22,8 @@ def VAELoss(model, x, y, ae_type):
         mean, logvar = model.encode(x)
     elif ae_type == "CVAE":
         mean, logvar = model.encode(x, y)
+    elif ae_type == "BetaVAE":
+        mean, logvar = model.encode(x)
     else:
         raise ValueError
 
@@ -31,10 +33,10 @@ def VAELoss(model, x, y, ae_type):
         x_logits  = model.decode(z)
     elif ae_type == "CVAE":
         x_logits  = model.decode(z, y)
+    elif ae_type == "BetaVAE":
+        x_logits = model.decode(z)
     else:
         raise ValueError
-
-    #x_logits = model.decode(z)
 
     # cross_ent = - marginal likelihood
     cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logits, labels=x)
@@ -44,11 +46,15 @@ def VAELoss(model, x, y, ae_type):
     KL_divergence = tf.reduce_sum(mean ** 2 + tf.exp(logvar) - logvar - 1, axis=1)
     KL_divergence = tf.reduce_mean(KL_divergence)
 
-    ELBO = marginal_likelihood - KL_divergence
+    if ae_type == "BetaVAE":
+        ELBO = marginal_likelihood - model.beta * KL_divergence
+    else:
+        ELBO = marginal_likelihood - KL_divergence
+
     loss = -ELBO
     return loss
 
 # Reparametrization trick
 def trick(mean, logvar):
-    eps = tf.random.normal(shape=mean.shape)
+    eps = tf.random.normal(shape = mean.shape)
     return eps * tf.exp(logvar * .5) + mean

@@ -5,6 +5,7 @@ import tensorflow as tf
 from utils import data, plot
 from model.auto_encoder import AE
 from model.variational_autoenc import VAE, CVAE
+from model.BetaVAE import BetaVAE
 from loss import compute_loss
 import time
 import argparse
@@ -13,10 +14,10 @@ def parse_args():
     desc = "Tensorflow 2.0 implementation of 'AutoEncoder Families (AE, VAE, CVAE(Conditional VAE))'"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--ae_type', type=str, default=False,
-                        help='Type of autoencoder: [AE, VAE, CVAE]')
+                        help='Type of autoencoder: [AE, DAE, VAE, CVAE, BetaVAE]')
     parser.add_argument('--latent_dim', type=int, default=2,
                         help='Degree of latent dimension(a.k.a. "z")')
-    parser.add_argument('--num_epochs', type=int, default=15,
+    parser.add_argument('--num_epochs', type=int, default=60,
                         help='The number of training epochs')
     parser.add_argument('--learn_rate', type=float, default=1e-4,
                         help='Learning rate during training')
@@ -25,19 +26,21 @@ def parse_args():
     return parser.parse_args()
 
 
-def train(ae_type, net_type, latent_dim=2, epochs=100, lr=1e-4, batch_size=1000):
+def train(ae_type, latent_dim=2, epochs=100, lr=1e-4, batch_size=1000):
 
-    if ae_type == "AE":
-        model = AE(latent_dim, net_type=net_type)
+    if ae_type == "AE" or ae_type == "DAE":
+        model = AE(latent_dim)
     elif ae_type == "VAE":
-        model = VAE(latent_dim, net_type=net_type)
+        model = VAE(latent_dim)
     elif ae_type == "CVAE":
-        model = CVAE(latent_dim, net_type=net_type)
+        model = CVAE(latent_dim)
+    elif ae_type == "BetaVAE":
+        model = BetaVAE(latent_dim)
     else:
         raise ValueError
 
     # load train and test data
-    train_dataset, test_dataset = data.load_dataset(batch_size=batch_size)
+    train_dataset, test_dataset = data.load_dataset(ae_type, batch_size=batch_size)
     # initialize Adam optimizer
     optimizer = tf.keras.optimizers.Adam(lr)
 
@@ -49,7 +52,7 @@ def train(ae_type, net_type, latent_dim=2, epochs=100, lr=1e-4, batch_size=1000)
             apply_gradients(optimizer, gradients, model.trainable_variables)
             last_loss = loss
 
-        if epoch % 10 == 0:
+        if epoch % 2 == 0:
             print('Epoch {}, Loss: {}'.format(epoch, last_loss))
 
     return model
@@ -66,7 +69,7 @@ def apply_gradients(optimizer, gradients, variables):
 def main(args):
 
     train(latent_dim=args.latent_dim, epochs=args.num_epochs, lr=args.learn_rate,
-            batch_size=args.batch_size, ae_type = args.ae_type, net_type = "conv",)
+            batch_size=args.batch_size, ae_type = args.ae_type)
 
 if __name__ == "__main__":
     args = parse_args()

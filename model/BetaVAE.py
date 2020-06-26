@@ -1,11 +1,15 @@
+import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model
-from tensorflow.keras.layers import InputLayer, Conv2D, Flatten, Dense, Conv2DTranspose, Reshape
 
-class VAE(Model):
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Conv2D, Conv2DTranspose, Dense
+from tensorflow.keras.layers import Flatten, Reshape, InputLayer
+
+class BetaVAE(Model):
     def __init__(self, latent_dim: int):
-        super(VAE, self).__init__()
+        super(BetaVAE, self).__init__()
         self.latent_dim = latent_dim
+        self.beta = 100
 
         self.inference_net = tf.keras.Sequential([
                 InputLayer(input_shape=[28, 28, 1]),
@@ -48,46 +52,6 @@ class VAE(Model):
 
     def decode(self, z, apply_sigmoid=False):
         logits = self.generative_net(z)
-        if apply_sigmoid:
-            probs = tf.sigmoid(logits)
-            return probs
-        return logits
-
-
-class CVAE(Model):
-    def __init__(self, latent_dim: int):
-        super(CVAE, self).__init__()
-
-        self.latent_dim = latent_dim
-        self.num_classes = 10
-
-        self.inference_net = tf.keras.Sequential([
-                InputLayer(input_shape=[28 * 28 * 1 + self.num_classes]),
-                Flatten(),
-                Dense(256, activation='relu'),
-                Dense(128, activation='relu'),
-                Dense(self.latent_dim * 2),    # [means, stds]
-            ])
-
-        self.generative_net = tf.keras.Sequential([
-                InputLayer(input_shape=[self.latent_dim + self.num_classes]),
-                Dense(128, activation='relu'),
-                Dense(256, activation='relu'),
-                Dense(28 * 28 * 1),
-                Reshape(target_shape=[28, 28, 1]),
-            ])
-
-    def encode(self, x, y):
-        conditional_x = tf.concat([Flatten()(x), tf.one_hot(y, self.num_classes)], 1)
-        mean_logvar = self.inference_net(conditional_x)
-        N = mean_logvar.shape[0]
-        mean = tf.slice(mean_logvar, [0, 0], [N, self.latent_dim])
-        logvar = tf.slice(mean_logvar, [0, self.latent_dim], [N, self.latent_dim])
-        return mean, logvar
-
-    def decode(self, z, y, apply_sigmoid=False):
-        conditional_z = tf.concat([Flatten()(z), tf.one_hot(y, self.num_classes)], 1)
-        logits = self.generative_net(conditional_z)
         if apply_sigmoid:
             probs = tf.sigmoid(logits)
             return probs
