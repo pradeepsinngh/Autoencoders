@@ -8,9 +8,9 @@ Implementations of following Autoencoders;
 - Conditional Variational Autoencoder (CVAE)
 - Beat Variational Autoencoder (beta-VAE) (in progress)
 
-## How to run
+## How to run:
 
-```python3 main.py --ae_type AE```
+run ```python3 main.py --ae_type AE```
 
 ### Parameters that we can pass: 
 
